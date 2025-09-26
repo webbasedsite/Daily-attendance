@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent Attendance - Carrybee</title>
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0; padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f7fa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+    }
+
+    header {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 30px;
+      color: #2575fc;
+      text-shadow: 0 1px 3px rgba(255, 223, 0, 0.6);
+      border-bottom: 2px solid #FFDF00;
+      padding-bottom: 10px;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .container {
+      background: white;
+      padding: 30px 35px;
+      border-radius: 15px;
+      box-shadow: 0 8px 24px rgba(37,117,252,0.15);
+      max-width: 380px;
+      width: 100%;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: #2575fc;
+      display: block;
+      margin-bottom: 10px;
+      text-align: left;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1.5px solid #2575fc;
+      margin-bottom: 25px;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: #1a54c2;
+      box-shadow: 0 0 8px rgba(26,84,194,0.5);
+    }
+
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1.5px solid #2575fc;
+      margin-bottom: 25px;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+
+    select:focus {
+      border-color: #1a54c2;
+      box-shadow: 0 0 8px rgba(26,84,194,0.5);
+    }
+
+    button {
+      background: #2575fc;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 15px 0;
+      width: 100%;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37,117,252,0.5);
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    button:hover {
+      background: #1a54c2;
+      box-shadow: 0 6px 18px rgba(26,84,194,0.8);
+    }
+
+    #welcome {
+      font-weight: 700;
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+      color: #2575fc;
+    }
+
+    #officeName {
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 25px;
+      color: #444;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-weight: 600;
+      min-height: 1.2em;
+      color: #d8000c; /* error red */
+    }
+
+    @media (max-width: 420px) {
+      .container {
+        padding: 25px 20px;
+      }
+
+      header {
+        font-size: 2rem;
+        max-width: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>Carrybee Agent Attendance</header>
+
+  <div class="container">
+    <div id="welcome">Welcome, Guest</div>
+    <div id="officeName"></div>
+
+    <label for="agentPhone">Enter Your Phone Number</label>
+    <input type="text" id="agentPhone" placeholder="e.g. 017XXXXXXXX" autocomplete="off" />
+
+    <label for="shift">Select Shift</label>
+    <select id="shift">
+      <!-- Options will be dynamically added here -->
+    </select>
+
+    <button onclick="submitAttendance('Check-In')">Check In</button>
+    <button onclick="submitAttendance('Check-Out')" style="margin-top: 15px;">Check Out</button>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const webAppUrl = 'https://script.google.com/macros/s/AKfycbyJv5I4CmO459UHLc07lhRJIbptFk3tbAdq74Rbbywirf3rW68-KwVSpt2_4OiJQEB3Vw/exec';
+
+    const welcomeEl = document.getElementById('welcome');
+    const officeEl = document.getElementById('officeName');
+    const phoneInput = document.getElementById('agentPhone');
+    const shiftSelect = document.getElementById('shift');
+    const statusEl = document.getElementById('status');
+
+    // Shift options by role
+    const shiftOptions = {
+      'agent': ['Morning', 'Evening'],
+      'incharge': ['Morning', 'Evening', 'Night'],
+      'admin': ['Morning', 'Evening', 'Night']
+    };
+
+    // Load stored user info (for incharge/admin welcome)
+    function loadUserInfo() {
+      const name = localStorage.getItem('name');
+      const hubName = localStorage.getItem('hubName');
+      if (name) welcomeEl.textContent = `Welcome ${name}`;
+      if (hubName) officeEl.textContent = `Office: ${hubName}`;
+    }
+    loadUserInfo();
+
+    // Validate phone number format (10-15 digits)
+    function validatePhone(phone) {
+      return /^\d{10,15}$/.test(phone);
+    }
+
+    // Fetch all employees for phone-role validation
+    let allEmployees = [];
+    async function fetchAllEmployees() {
+      try {
+        const resp = await fetch(webAppUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'action=getAllEmployees'
+        });
+        const data = await resp.json();
+        if (data.success) {
+          allEmployees = data.employees || [];
+        } else {
+          statusEl.textContent = 'Failed to load employees';
+        }
+      } catch (e) {
+        statusEl.textContent = 'Error fetching employees';
+      }
+    }
+    fetchAllEmployees();
+
+    // Update shift dropdown options based on role
+    function updateShiftOptions(role) {
+      shiftSelect.innerHTML = ''; // Clear previous options
+      const options = shiftOptions[role] || shiftOptions['agent'];
+      options.forEach(opt => {
+        const optionEl = document.createElement('option');
+        optionEl.value = opt;
+        optionEl.textContent = opt;
+        shiftSelect.appendChild(optionEl);
+      });
+    }
+
+    // On phone input change, update shift options dynamically
+    phoneInput.addEventListener('input', () => {
+      statusEl.textContent = '';
+      statusEl.style.color = '#d8000c';
+      const phone = phoneInput.value.trim();
+      if (!validatePhone(phone)) {
+        updateShiftOptions('agent'); // Default if invalid phone
+        return;
+      }
+      const emp = allEmployees.find(e => e.phone === phone);
+      if (emp && emp.role) {
+        updateShiftOptions(emp.role.toLowerCase());
+      } else {
+        updateShiftOptions('agent'); // Default if no match
+      }
+    });
+
+    // Initial shift options on page load
+    updateShiftOptions('agent');
+
+    async function submitAttendance(action) {
+      statusEl.style.color = '#d8000c';
+      statusEl.textContent = '';
+      const phone = phoneInput.value.trim();
+      const shift = shiftSelect.value;
+
+      if (!validatePhone(phone)) {
+        statusEl.textContent = "Please enter a valid phone number";
+        return;
+      }
+
+      const matchedEmp = allEmployees.find(emp => emp.phone === phone && emp.role);
+      if (!matchedEmp) {
+        statusEl.textContent = "Phone not registered";
+        return;
+      }
+
+      // Check if selected shift is valid for role
+      if (!shiftOptions[matchedEmp.role.toLowerCase()].includes(shift)) {
+        statusEl.textContent = `Shift "${shift}" not allowed for your role`;
+        return;
+      }
+
+      const timestamp = new Date().toISOString();
+
+      if (!navigator.geolocation) {
+        statusEl.textContent = "Geolocation is not supported by your browser";
+        return;
+      }
+
+      statusEl.textContent = `Getting location...`;
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        try {
+          const locResp = await fetch(webAppUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=getOfficeLocation&phone=${encodeURIComponent(phone)}`
+          });
+          const locData = await locResp.json();
+
+          if (!locData.success) {
+            statusEl.textContent = locData.message || 'Failed to get office location';
+            return;
+          }
+
+          const officeLat = parseFloat(locData.latitude);
+          const officeLng = parseFloat(locData.longitude);
+
+          const dist = getDistance(latitude, longitude, officeLat, officeLng);
+
+          if (dist > 100) {
+            statusEl.textContent = `You are too far from office (${Math.round(dist)} meters). Move closer to check-in/out.`;
+            return;
+          }
+
+          statusEl.textContent = `${action} in progress...`;
+
+          const attendanceResp = await fetch(webAppUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=${action}&phone=${encodeURIComponent(phone)}&shift=${encodeURIComponent(shift)}&latitude=${latitude}&longitude=${longitude}&timestamp=${timestamp}`
+          });
+
+          const attendanceData = await attendanceResp.json();
+
+          if (attendanceData.success) {
+            welcomeEl.textContent = `Welcome ${matchedEmp.name}`;
+            officeEl.textContent = `Office: ${attendanceData.officeName || ''}`;
+            statusEl.style.color = 'green';
+            statusEl.textContent = `${action} successful at ${attendanceData.officeName || 'office'}`;
+          } else {
+            statusEl.style.color = '#d8000c';
+            statusEl.textContent = attendanceData.message || `${action} failed`;
+          }
+
+        } catch (err) {
+          statusEl.style.color = '#d8000c';
+          statusEl.textContent = "Error during attendance submission";
+          console.error(err);
+        }
+
+      }, (error) => {
+        statusEl.style.color = '#d8000c';
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            statusEl.textContent = "Location permission denied.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            statusEl.textContent = "Location information unavailable.";
+            break;
+          case error.TIMEOUT:
+            statusEl.textContent = "Location request timed out.";
+            break;
+          default:
+            statusEl.textContent = "An unknown error occurred retrieving location.";
+            break;
+        }
+      }, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      });
+    }
+
+    // Clear error on input change
+    phoneInput.addEventListener('input', () => {
+      statusEl.textContent = '';
+      statusEl.style.color = '#d8000c';
+    });
+
+    // Haversine formula to calculate distance in meters between two lat-lng points
+    function getDistance(lat1, lon1, lat2, lon2) {
+      function toRad(x) {
+        return x * Math.PI / 180;
+      }
+
+      const R = 6371e3; // metres
+      const φ1 = toRad(lat1);
+      const φ2 = toRad(lat2);
+      const Δφ = toRad(lat2 - lat1);
+      const Δλ = toRad(lon2 - lon1);
+
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      const d = R * c;
+      return d; // distance in meters
+    }
+
+  </script>
+</body>
+</html>

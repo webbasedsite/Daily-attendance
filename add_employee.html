@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Add Employee</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header>Add New Employee</header>
+
+  <section>
+    <form id="addEmployeeForm">
+      <label for="officeSelect">Select Office *</label>
+      <select id="officeSelect" name="office" required>
+        <option value="">Loading offices...</option>
+      </select>
+
+      <label for="nameInput">Name *</label>
+      <input type="text" id="nameInput" name="name" required />
+
+      <label for="phoneInput">Phone *</label>
+      <input type="text" id="phoneInput" name="phone" pattern="^\+?\d{7,15}$" required />
+
+      <label for="roleInput">Role *</label>
+      <input type="text" id="roleInput" name="role" required />
+
+      <label for="passwordInput">Password *</label>
+      <input type="password" id="passwordInput" name="password" minlength="6" required />
+
+      <!-- Hidden location fields -->
+      <input type="hidden" id="latitude" name="latitude" />
+      <input type="hidden" id="longitude" name="longitude" />
+      <input type="hidden" id="accuracy" name="accuracy" />
+
+      <button type="submit">Add Employee</button>
+    </form>
+    <div id="status"></div>
+  </section>
+
+  <script>
+    const webAppUrl = 'https://script.google.com/macros/s/AKfycbyJv5I4CmO459UHLc07lhRJIbptFk3tbAdq74Rbbywirf3rW68-KwVSpt2_4OiJQEB3Vw/exec'; // replace with your ID
+    const form = document.getElementById('addEmployeeForm');
+    const statusEl = document.getElementById('status');
+    const officeSelect = document.getElementById('officeSelect');
+
+    // Load offices
+    async function loadOffices() {
+      try {
+        const resp = await fetch(webAppUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'action=getOffices'
+        });
+        const data = await resp.json();
+        if (!data.success) throw new Error();
+        officeSelect.innerHTML = '<option value="">Select Office</option>';
+        data.offices.forEach(o => {
+          officeSelect.innerHTML += `<option value="${o.id}">${o.name}</option>`;
+        });
+      } catch {
+        statusEl.textContent = "Error loading offices.";
+      }
+    }
+    loadOffices();
+
+    // Get browser location
+    function getLocation() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject("Geolocation not supported");
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve(pos.coords),
+          err => reject(err.message),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      });
+    }
+
+    // Handle submit
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      statusEl.style.color = "#007bff";
+      statusEl.textContent = "Getting location...";
+
+      try {
+        const coords = await getLocation();
+        document.getElementById('latitude').value = coords.latitude;
+        document.getElementById('longitude').value = coords.longitude;
+        document.getElementById('accuracy').value = coords.accuracy;
+
+        const formData = new FormData(form);
+        const body = new URLSearchParams();
+        formData.forEach((v, k) => body.append(k, v));
+        body.append("action", "addEmployee");
+
+        const resp = await fetch(webAppUrl, { method: 'POST', body });
+        const result = await resp.json();
+
+        if (result.success) {
+          statusEl.style.color = "green";
+          statusEl.textContent = "Employee added successfully.";
+          form.reset();
+        } else {
+          statusEl.style.color = "red";
+          statusEl.textContent = result.message || "Failed to add employee.";
+        }
+      } catch (err) {
+        statusEl.style.color = "red";
+        statusEl.textContent = "Error: " + err;
+      }
+    });
+  </script>
+</body>
+</html>

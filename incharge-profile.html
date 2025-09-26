@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Incharge Profile - Carrybee</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #e8f0fe;
+      margin: 0;
+      padding: 20px;
+      color: #1a237e;
+    }
+    header {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #3f51b5;
+      margin-bottom: 30px;
+      text-shadow: 1px 1px 3px rgba(63,81,181,0.3);
+    }
+    .profile-container {
+      max-width: 480px;
+      background: white;
+      margin: 0 auto;
+      padding: 30px 40px;
+      border-radius: 15px;
+      box-shadow: 0 8px 24px rgba(63,81,181,0.15);
+    }
+    .field-label {
+      font-weight: 600;
+      color: #3949ab;
+      margin-top: 15px;
+      margin-bottom: 6px;
+      font-size: 1rem;
+    }
+    .field-value {
+      font-size: 1.15rem;
+      color: #222;
+      padding: 10px 15px;
+      background: #f0f4ff;
+      border-radius: 8px;
+      user-select: text;
+    }
+    #officeLocation {
+      margin-top: 20px;
+      font-style: italic;
+      color: #5c6bc0;
+    }
+    button {
+      display: block;
+      width: 100%;
+      margin-top: 30px;
+      padding: 14px 0;
+      background: #3f51b5;
+      color: white;
+      font-weight: 700;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(63,81,181,0.4);
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background: #303f9f;
+    }
+    #status {
+      margin-top: 15px;
+      font-weight: 600;
+      text-align: center;
+      color: #d32f2f;
+      min-height: 1.2em;
+    }
+  </style>
+</head>
+<body>
+
+<header>Incharge Profile</header>
+
+<div class="profile-container">
+  <div>
+    <div class="field-label">Name</div>
+    <div class="field-value" id="name">Loading...</div>
+  </div>
+  <div>
+    <div class="field-label">Phone</div>
+    <div class="field-value" id="phone">Loading...</div>
+  </div>
+  <div>
+    <div class="field-label">Role</div>
+    <div class="field-value" id="role">Loading...</div>
+  </div>
+  <div>
+    <div class="field-label">Office Name</div>
+    <div class="field-value" id="officeName">Loading...</div>
+  </div>
+  <div id="officeLocation">Loading office location...</div>
+
+  <button id="editProfileBtn">Edit Profile</button>
+
+  <div id="status"></div>
+</div>
+
+<script>
+  const webAppUrl = 'https://script.google.com/macros/s/AKfycbyJv5I4CmO459UHLc07lhRJIbptFk3tbAdq74Rbbywirf3rW68-KwVSpt2_4OiJQEB3Vw/exec';
+
+  const inchargePhone = localStorage.getItem('phone') || prompt("Enter your phone number");
+
+  const nameEl = document.getElementById('name');
+  const phoneEl = document.getElementById('phone');
+  const roleEl = document.getElementById('role');
+  const officeNameEl = document.getElementById('officeName');
+  const officeLocationEl = document.getElementById('officeLocation');
+  const statusEl = document.getElementById('status');
+
+  async function loadProfile() {
+    try {
+      statusEl.textContent = 'Loading profile...';
+
+      // 🔹 Step 1: Get all employees
+      const respEmp = await fetch(webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'action=getAllEmployees'
+      });
+      const dataEmp = await respEmp.json();
+      if (!dataEmp.success) throw new Error('Failed to load employees');
+
+      const emp = dataEmp.employees.find(e => e.phone === inchargePhone);
+      if (!emp) throw new Error('Incharge not found');
+
+      nameEl.textContent = emp.name || 'N/A';
+      phoneEl.textContent = emp.phone || 'N/A';
+      roleEl.textContent = emp.role || 'N/A';
+
+      // 🔹 Step 2: Get office location using phone
+      const respOffice = await fetch(webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `action=getOfficeLocation&phone=${encodeURIComponent(inchargePhone)}`
+      });
+      const dataOffice = await respOffice.json();
+      if (!dataOffice.success) throw new Error('Failed to load office location');
+
+      // 🔹 Step 3: Get office name using office list (if officeID exists)
+      let officeName = 'Unknown';
+
+      if (emp.officeID) {
+        const respOffices = await fetch(webAppUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'action=getOffices'
+        });
+        const dataOffices = await respOffices.json();
+        if (dataOffices.success && Array.isArray(dataOffices.offices)) {
+          const office = dataOffices.offices.find(o => o.id === emp.officeID);
+          if (office) officeName = office.name;
+        }
+      } else if (emp.officeName) {
+        // 🔁 Fallback if officeName directly available
+        officeName = emp.officeName;
+      }
+
+      officeNameEl.textContent = officeName;
+      officeLocationEl.textContent = `Office Location: Latitude ${dataOffice.latitude}, Longitude ${dataOffice.longitude}`;
+      statusEl.textContent = '';
+
+    } catch (err) {
+      statusEl.textContent = err.message || 'Error loading profile';
+      console.error(err);
+    }
+  }
+
+  loadProfile();
+
+  // 🔘 Edit profile button placeholder
+  document.getElementById('editProfileBtn').addEventListener('click', () => {
+    alert('Edit Profile functionality coming soon!');
+  });
+</script>
+
+</body>
+</html>

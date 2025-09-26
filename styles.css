@@ -1,0 +1,119 @@
+/* styles.css */
+
+/* Reset & basics */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background: #f4f7fc;
+  color: #333;
+  line-height: 1.5;
+  padding: 20px;
+}
+
+/* Header */
+header {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 25px;
+  color: #2575fc;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(37,117,252,0.3);
+  border-bottom: 2px solid #2575fc;
+  padding-bottom: 10px;
+}
+
+/* Containers */
+.container, section {
+  background: #fff;
+  padding: 25px 30px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(37,117,252,0.15);
+  margin: 0 auto 25px;
+  max-width: 500px;
+}
+
+/* Labels */
+label {
+  display: block;
+  font-weight: 600;
+  font-size: 1rem;
+  color: #2575fc;
+  margin: 15px 0 8px;
+}
+
+/* Inputs */
+input, select {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: 1.5px solid #2575fc;
+  outline: none;
+  margin-bottom: 20px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+input:focus, select:focus {
+  border-color: #1a54c2;
+  box-shadow: 0 0 8px rgba(26,84,194,0.5);
+}
+
+/* Buttons */
+button {
+  background: #2575fc;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 0;
+  width: 100%;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 12px rgba(37,117,252,0.5);
+}
+button:hover {
+  background: #1a54c2;
+  box-shadow: 0 6px 18px rgba(26,84,194,0.8);
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+th, td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  font-size: 1rem;
+}
+th {
+  background-color: #2575fc;
+  color: white;
+  font-weight: 700;
+}
+
+/* Status messages */
+#status {
+  margin-top: 15px;
+  font-weight: 600;
+  min-height: 1.2em;
+  text-align: center;
+  color: #d8000c; /* default red */
+}
+
+/* Mobile tweaks */
+@media (max-width: 480px) {
+  .container, section {
+    padding: 20px 15px;
+  }
+  header { font-size: 1.6rem; }
+  button { font-size: 1rem; }
+}
